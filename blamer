@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+filepath=$1
+dir="$(dirname $filepath)"
+file="$(basename $filepath)"
+
+cd "$dir"
+
+commit_id_width=40
+space_width=1
+bracket_width=1
+line_num_width="$(( $(wc -l $file | awk '{print $1}' | wc -c) - 1 ))"
+
+sed_file=$(mktemp)
+
+content_starts_at=$(( commit_id_width + space_width + line_num_width + bracket_width + space_width + 1 ))
+
+longest_subject_width=$(git log --format='format:%s' | awk 'length>max{max=length}END{print max}')
+
+git log --format="format:s/^%H/%>($longest_subject_width)%s> /" >$sed_file
+
+git blame $file -s --root --abbrev=$commit_id_width \
+| cut -c1-$commit_id_width,$content_starts_at- \
+| sed -f $sed_file
+
+rm $sed_file

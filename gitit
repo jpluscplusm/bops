@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+t=/tmp/foo
+rm -rf /tmp/foo
+mkdir /tmp/foo
+#t="$(mktemp -d)"
+
+export GIT_DIR="$t/.git"
+export GIT_WORK_TREE="$t"
+git init --quiet
+
+input_manifest="$1"
+shift
+manifest_filename="$(basename $input_manifest)"
+output_manifest="$t/$manifest_filename"
+
+bosh interpolate "$input_manifest" >"$output_manifest"
+
+git add -- "$manifest_filename"
+git commit -m "$manifest_filename"
+
+ops_args=""
+
+for ops_file; do
+  ops_args+=" -o $ops_file"
+  bosh interpolate "$input_manifest" $ops_args >"$output_manifest"
+  git commit -m "$(basename ${ops_file})" -- "$output_manifest"
+done 
+
+echo export GIT_DIR="$t/.git"
+echo export GIT_WORK_TREE="$t"
