@@ -14,6 +14,11 @@ git init --quiet
 echo export GIT_DIR="$t/.git"
 echo export GIT_WORK_TREE="$t"
 
+short_filename() {
+  basename $1 .yml \
+  | cut -c1-${2:-999}
+}
+
 input_manifest="$1"
 shift
 manifest_filename="$(basename $input_manifest)"
@@ -22,7 +27,7 @@ output_manifest="$t/$manifest_filename"
 bosh interpolate "$input_manifest" >"$output_manifest"
 
 git add -- "$manifest_filename" >/dev/null
-git commit -m "$manifest_filename" >/dev/null
+git commit -m "$(short_filename $manifest_filename)" >/dev/null
 
 ops_args=""
 
@@ -30,7 +35,7 @@ for ops_file; do
   ops_args+=" -o $ops_file"
   bosh interpolate "$input_manifest" $ops_args >"$output_manifest" \
   || { echo "Failed to apply ops file '$ops_file'; bailing out ..." >&2; false; }
-  git commit -m "$(basename ${ops_file} .yml | cut -c1-${MAXWIDTH:-999})" -- "$output_manifest" >/dev/null \
+  git commit -m "$(short_filename ${ops_file})" -- "$output_manifest" >/dev/null \
   || true
 done 
 
