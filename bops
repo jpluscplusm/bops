@@ -5,8 +5,8 @@ set -ueo pipefail
 export param_1=$1
 shift
 
-eval $(./gitit $param_1 "$@")
+eval $(./bops-create $param_1 "$@")
 
-./blamer $GIT_WORK_TREE/$(basename $param_1) | ${PAGER:-cat}
+./bops-read $GIT_WORK_TREE/$(basename $param_1) | ${PAGER:-cat}
 
 echo "Cowardly refusing to remove the temp dir with 'rm -rf $GIT_WORK_TREE/' ..." >&2
