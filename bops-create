@@ -6,6 +6,7 @@ set -euo pipefail
 #rm -rf /tmp/foo
 #mkdir /tmp/foo
 t="$(mktemp -d)"
+timings=$t/bops-timings
 
 export GIT_DIR="$t/.git"
 export GIT_WORK_TREE="$t"
@@ -19,23 +20,28 @@ short_filename() {
   | cut -c1-${2:-999}
 }
 
+walltime() {
+  awk '{print $1}' <$timings
+}
+
 input_manifest="$1"
 shift
 manifest_filename="$(basename $input_manifest)"
 output_manifest="$t/$manifest_filename"
 
-bosh interpolate "$input_manifest" >"$output_manifest"
+command time bosh interpolate "$input_manifest" >"$output_manifest" 2>$timings
 
 git add -- "$manifest_filename" >/dev/null
-git commit -m "$(short_filename $manifest_filename)" >/dev/null
+git commit -m "$(short_filename $manifest_filename):$(walltime)" >/dev/null
 
 ops_args=""
 
 for ops_file; do
   ops_args+=" -o $ops_file"
-  bosh interpolate "$input_manifest" $ops_args >"$output_manifest" \
+  command time bosh interpolate "$input_manifest" $ops_args \
+  >"$output_manifest" 2>$timings \
   || { echo "Failed to apply ops file '$ops_file'; bailing out ..." >&2; false; }
-  git commit -m "$(short_filename ${ops_file})" -- "$output_manifest" >/dev/null \
+  git commit -m "$(short_filename ${ops_file}):$(walltime)" -- "$output_manifest" >/dev/null \
   || true
 done 
 
